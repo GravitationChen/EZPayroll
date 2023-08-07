@@ -22,7 +22,7 @@ This is a payroll management application named EZ Payroll. It provides a solutio
 4.  
 
 # Copyright Disclosure
-# EZ Payroll is under MIT-FPA License
+## EZ Payroll is under MIT-FPA License
 FPA License
 Copyright 2023 Boyu Chen
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without limitation in the rights to use, copy, modify, merge, publish, and/ or distribute copies of the Software in an educational or personal context, subject to the following conditions: 
