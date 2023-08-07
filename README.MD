@@ -21,7 +21,7 @@ This is a payroll management application named EZ Payroll. It provides a solutio
 3. Exporting payrolls into personal T4 slips by a template file (User comstomizable).
 4.  
 
-# Copyright Disclosure
+# Copyright Disclosure and License Detail
 ## EZ Payroll is under MIT-FPA License
 FPA License
 Copyright 2023 Boyu Chen
