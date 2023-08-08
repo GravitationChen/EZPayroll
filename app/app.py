@@ -13,10 +13,14 @@ import csv
 import redis
 from reportlab.lib.pagesizes import letter
 from reportlab.lib import colors
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Spacer
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Spacer, PageBreak
+from reportlab.platypus.flowables import Image
 from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.pdfgen import canvas
 import os
 import zipfile
+from pdf417gen import encode, render_image
+from PIL import Image as PILImage
 
 
 # assume tax rate is 30%
@@ -216,8 +220,8 @@ def upload_payroll():
         f = request.files['file']
         # open f as file object
         filename = secure_filename(f.filename)+time.strftime('%Y%m%d-%H%M%S')+".csv"
-        f.save("../uploads" + filename)
-        f = open(f"../uploads/{filename}", "r")
+        f.save("../uploads/" + filename)
+        f = open("../uploads/"+filename, "r")
         # parse csv file and store in sqlite table payroll
         csv_file = csv.reader(f)
         next(csv_file, None) # skip the header
@@ -229,25 +233,29 @@ def upload_payroll():
             csv.writer(backup).writerows(c.fetchall())
         for row in csv_file:
             # check if employee id exists in employee table
-            c.execute("SELECT * FROM employee WHERE id = {0};".format(row[0]))
-            if len(c.fetchall()) == 0:
+            ls=c.execute("SELECT * FROM employee WHERE id = {0};".format(row[0])).fetchall()
+            print(row)
+            print(ls)
+            if len(ls) == 0:
+                print("error 6")
                 return userError()
             # check if date format is correct
             try:
-                datetime.datetime.strptime(row[2], '%Y-%m-%d')
+                datetime.datetime.strptime(row[2].strip(), '%Y-%m-%d')
             except ValueError:
+                print("error 4")
                 return userError()
             # check if hour is a number
             try:
                 float(row[1])
             except ValueError:
+                print("error 5")
                 return userError()
             # insert new rows from csv file to finish the update
             c.execute("INSERT INTO payrolls (employeeid, hour, date) VALUES (\"{0}\",\"{1}\",\"{2}\");".format(row[0], row[1], row[2]))    
         sql.commit()
         sql.close()
         # Save a backup of the file at /uploads
-        f.save(secure_filename("./uploads/",time.strftime('%Y%m%d-%H%M%S')),f"{f.filename}")
         f.close()
         return redirect('/')
     return render_template('upload_payroll.html')
@@ -288,36 +296,36 @@ def calculatePayroll(fiscal_year, week_number):
     # Get the start date and end date of the week
     start_date = datetime.datetime.strptime(fiscal_year + '-W' + week_number + '-1', "%Y-W%W-%w").strftime("%Y-%m-%d")
     end_date = datetime.datetime.strptime(fiscal_year + '-W' + week_number + '-0', "%Y-W%W-%w").strftime("%Y-%m-%d")
+    print(start_date, end_date)
     # Get the employee id, name, sin number, wage, and employment income
-    c.execute("SELECT employee.id, employee.name, employee.sin_num, employee.wage, SUM(payrolls.hour * employee.wage) FROM employee JOIN payrolls ON employee.id = payrolls.employeeid WHERE payrolls.date BETWEEN \"{0}\" AND \"{1}\" GROUP BY employee.id;".format(start_date, end_date))
+    tmp = c.execute("SELECT employee.id, employee.name, employee.sin_num, employee.wage, SUM(payrolls.hour * employee.wage) FROM employee JOIN payrolls ON employee.id = payrolls.employeeid WHERE payrolls.date BETWEEN \"{0}\" AND \"{1}\" GROUP BY employee.id;".format(" "+start_date, " "+end_date))
     # if not found, return not found error
-    if c.fetchone() == None:
-        return redirect('/notfound')
     employee_data = {}
-    for row in c.fetchall():
-        employee_data[row[0]] = {"name": row[1], "sin_num": row[2], "wage": row[3], "employment_income": row[4], "employer_name": EMPLOYER_NAME}
+    for row in tmp.fetchall():
+        if row == None:
+            return redirect('/notfound')
+        employee_data[row[0]] = {"employee_id":row[0],"name": row[1], "sin_num": row[2], "wage": row[3], "employment_income": row[4], "employer_name": EMPLOYER_NAME}
     # Calculate tax deducted for each employee
     for employee_id in employee_data:
         employee_data[employee_id]["tax_deducted"] = employee_data[employee_id]["employment_income"] * TAX_RATE
     # Close database connection
     sql.close()
     # Return the employee data dictionary
+    print(employee_data)
     return employee_data
 
 # Define function to fill payroll data in T4 slip and download as pdf template provided by CRA
 def generate_t4_pdf(employee_data, output_file):
     # Create a PDF document
-    doc = SimpleDocTemplate(output_file, pagesize=letter)
+    pdf = SimpleDocTemplate(output_file, pagesize=letter)
     elements = []
-
     # Define the table data from calculatePayroll() function
-    data = [['Employee Name', 'Employee ID', 'SIN Number', 'Employment Income', 'Tax Deducted']]
+    
     for employee_id in employee_data:
+        data = [['Employee Name', 'Employee ID', 'SIN Number', 'Employment Income', 'Tax Deducted','Employer Name']]
         data.append([employee_data[employee_id]["name"], employee_id, employee_data[employee_id]["sin_num"], employee_data[employee_id]["employment_income"], employee_data[employee_id]["tax_deducted"], employee_data[employee_id]["employer_name"]])
-
-    # Create a table and apply styles
-    table = Table(data)
-    table.setStyle(TableStyle([
+        table = Table(data)
+        table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
@@ -325,26 +333,39 @@ def generate_t4_pdf(employee_data, output_file):
         ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
         ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
         ('GRID', (0, 0), (-1, -1), 1, colors.black),
-    ]))
+        ]))
+        elements.append(table)
+        elements.append(Spacer(1, 12))
+        # generate PDF 417 barcode
+        code = encode(str(employee_data[employee_id]), columns=6, security_level=6)
+        barcode = render_image(code, scale=2)
+        barcode.save('barcodetmp.jpg')
+        barcode.close()
+        print(type(barcode))
+        # Create a flowable object to add barcode to PDF
+        
+        barcode = Image("./barcodetmp.jpg")
+        print(type(barcode))
+        # Add the barcode image to the elements list
+        elements.append(barcode)
+        elements.append(Spacer(1, 12))
+    
+    
 
-    elements.append(table)
-    elements.append(Spacer(1, 12))
-
-    # Build the PDF document
-    doc.build(elements)
 
     # Save slip to ./slips/{date}/{employee_id}-{employee_name}.pdf
     # Create a folder for each day
     if not os.path.exists(f"./slips/{time.strftime('%Y%m%d')}"):
         os.makedirs(f"./slips/{time.strftime('%Y%m%d')}")
         
-    doc.save(output_file)
+    # Build the PDF document
+    pdf.build(elements)
 
-# Call generate_t4_pdf() function to generate T4 slip for each employee
+
+# Call generate_t4_pdf() function to generate T4 slip for each employees
 def generateT4s(fiscal_year, week_number):
     payroll = calculatePayroll(fiscal_year, week_number)
-    for employee_id in payroll:
-        generate_t4_pdf(payroll[employee_id], f"./slips/{time.strftime('%Y%m%d')}/{employee_id}-{payroll[employee_id]['name']}.pdf")
+    generate_t4_pdf(payroll, f"./slips/{time.strftime('%Y%m%d')}/{time.strftime('%H-%S')}.pdf")
 
 
 # Route to download CSV template
