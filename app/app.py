@@ -21,6 +21,7 @@ import os
 import zipfile
 from pdf417gen import encode, render_image
 from PIL import Image as PILImage
+from PyPDF4 import PdfFileMerger
 
 
 # assume tax rate is 30%
@@ -50,7 +51,6 @@ app = Flask(__name__)
 # Make session expire in 10 minutes
 app.config["PERMANENT_SESSION_LIFETIME"] = 600
 app.config["SESSION_PERMANENT"] = False
-app.config["SESSION_TYPE"] = "filesystem"
 Session(app)
 
 
@@ -322,6 +322,7 @@ def generate_t4_pdf(employee_data, output_file):
     # Define the table data from calculatePayroll() function
     
     for employee_id in employee_data:
+        pdf = SimpleDocTemplate(output_file, pagesize=letter)
         data = [['Employee Name', 'Employee ID', 'SIN Number', 'Employment Income', 'Tax Deducted','Employer Name']]
         data.append([employee_data[employee_id]["name"], employee_id, employee_data[employee_id]["sin_num"], employee_data[employee_id]["employment_income"], employee_data[employee_id]["tax_deducted"], employee_data[employee_id]["employer_name"]])
         table = Table(data)
@@ -348,7 +349,7 @@ def generate_t4_pdf(employee_data, output_file):
         print(type(barcode))
         # Add the barcode image to the elements list
         elements.append(barcode)
-        elements.append(Spacer(1, 12))
+        elements.append(PageBreak())
     
     
 
@@ -360,7 +361,7 @@ def generate_t4_pdf(employee_data, output_file):
         
     # Build the PDF document
     pdf.build(elements)
-
+    os.remove("./barcodetmp.jpg")
 
 # Call generate_t4_pdf() function to generate T4 slip for each employees
 def generateT4s(fiscal_year, week_number):
