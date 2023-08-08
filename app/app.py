@@ -51,6 +51,7 @@ app = Flask(__name__)
 # Make session expire in 10 minutes
 app.config["PERMANENT_SESSION_LIFETIME"] = 600
 app.config["SESSION_PERMANENT"] = False
+app.config["SESSION_TYPE"] = "filesystem"
 Session(app)
 
 
@@ -283,12 +284,6 @@ def checkTOTP(otp):
 
 # Define function to calculate payroll data from database (employment income, tax deducted, sin number, employee name, employee id, and assume all other T4 fields are empty) and return it as a dictionary
 # Take the selected fiscal year and week number as parameters
-"""
-Table schema:
-CREATE TABLE employee (id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, wage REAL NOT NULL, sin_num TEXT NOT NULL);
-CREATE TABLE payrolls (id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, employeeid INTEGER NOT NULL, hour REAL NOT NULL, date TEXT NOT NULL, FOREIGN KEY(employeeid) REFERENCES employee(id));
-CREATE TABLE management (id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, username TEXT NOT NULL, passwd TEXT NOT NULL, otp TEXT NOT NULL);
-"""
 def calculatePayroll(fiscal_year, week_number):
     # Connect to database
     sql = sqlite4.connect('../db/payroll.db', timeout=30)
@@ -316,13 +311,13 @@ def calculatePayroll(fiscal_year, week_number):
 
 # Define function to fill payroll data in T4 slip and download as pdf template provided by CRA
 def generate_t4_pdf(employee_data, output_file):
-    # Create a PDF document
-    pdf = SimpleDocTemplate(output_file, pagesize=letter)
-    elements = []
-    # Define the table data from calculatePayroll() function
+    # Create pdf merger object
+    merger = PdfFileMerger()
+
     
     for employee_id in employee_data:
-        pdf = SimpleDocTemplate(output_file, pagesize=letter)
+        pdf = SimpleDocTemplate(f"./slips/tmp/{employee_id}.pdf", pagesize=letter)
+        elements = []
         data = [['Employee Name', 'Employee ID', 'SIN Number', 'Employment Income', 'Tax Deducted','Employer Name']]
         data.append([employee_data[employee_id]["name"], employee_id, employee_data[employee_id]["sin_num"], employee_data[employee_id]["employment_income"], employee_data[employee_id]["tax_deducted"], employee_data[employee_id]["employer_name"]])
         table = Table(data)
@@ -350,9 +345,14 @@ def generate_t4_pdf(employee_data, output_file):
         # Add the barcode image to the elements list
         elements.append(barcode)
         elements.append(PageBreak())
+        pdf.build(elements)
     
-    
-
+    for employee_id in employee_data:
+        merger.append(fileobj=open(f"./slips/tmp/{employee_id}.pdf", 'rb'))
+    merger.write(fileobj=open(output_file, 'wb'))
+    merger.close()
+    for employee_id in employee_data:
+        os.remove(f"./slips/tmp/{employee_id}.pdf")
 
     # Save slip to ./slips/{date}/{employee_id}-{employee_name}.pdf
     # Create a folder for each day
@@ -360,13 +360,13 @@ def generate_t4_pdf(employee_data, output_file):
         os.makedirs(f"./slips/{time.strftime('%Y%m%d')}")
         
     # Build the PDF document
-    pdf.build(elements)
+    
     os.remove("./barcodetmp.jpg")
 
 # Call generate_t4_pdf() function to generate T4 slip for each employees
 def generateT4s(fiscal_year, week_number):
     payroll = calculatePayroll(fiscal_year, week_number)
-    generate_t4_pdf(payroll, f"./slips/{time.strftime('%Y%m%d')}/{time.strftime('%H-%S')}.pdf")
+    generate_t4_pdf(payroll, f"./slips/{time.strftime('%Y%m%d')}/{time.strftime('%H-%M-%S')}.pdf")
 
 
 # Route to download CSV template
