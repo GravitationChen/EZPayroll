@@ -70,6 +70,12 @@ def login_required(f):
     return decorated_function
 
 # index route
+"""
+Table schema:
+CREATE TABLE employee (id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, wage REAL NOT NULL, sin_num TEXT NOT NULL);
+CREATE TABLE payrolls (id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, employeeid INTEGER NOT NULL, hour REAL NOT NULL, date TEXT NOT NULL, FOREIGN KEY(employeeid) REFERENCES employee(id));
+CREATE TABLE management (id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, username TEXT NOT NULL, passwd TEXT NOT NULL, otp TEXT NOT NULL);
+"""
 @app.route('/', methods=['GET'])
 @login_required
 def index():
@@ -78,9 +84,24 @@ def index():
     e = c.execute("SELECT * FROM employee").fetchall()
     p = c.execute("SELECT * FROM payrolls").fetchall()
     e = len(e)
+    # Get the employee id, name, sin number, wage, and employment income
+    # database in " yyyy-mm-dd hh:mm:ss"
+    tmp = c.execute("SELECT employee.id, employee.name, employee.sin_num, employee.wage, SUM(payrolls.hour * employee.wage), payrolls.date, payrolls.hour FROM employee JOIN payrolls ON employee.id = payrolls.employeeid WHERE payrolls.date BETWEEN \"{0}\" AND \"{1}\" GROUP BY employee.id;".format((datetime.datetime.now() - datetime.timedelta(days=120)).strftime(" %Y-%m-%d"), datetime.datetime.now().strftime(" %Y-%m-%d")))
+    # if not found, return not found error
+    employee_data = {}
+    for row in tmp.fetchall():
+        if row == None:
+            return redirect('/notfound')
+        employee_data[row[0]] = {"employee_id":row[0],"name": row[1], "sin_num": row[2], "wage": row[3], "employment_income": row[4], "employer_name": EMPLOYER_NAME, "date": row[5], "hour": row[6]}
+    # Calculate tax deducted for each employee
+    for employee_id in employee_data:
+        employee_data[employee_id]["tax_deducted"] = employee_data[employee_id]["employment_income"] * TAX_RATE
+        employee_data[employee_id]["payout"] = employee_data[employee_id]["employment_income"] - employee_data[employee_id]["tax_deducted"]
+
+    print(employee_data)
     sql.close()
 
-    return render_template("index.html",employee=e,balance=BALANCE)
+    return render_template("index.html",employee=e,balance=BALANCE,instances=employee_data)
 
 # logout route
 @app.route('/logout', methods=['GET'])
