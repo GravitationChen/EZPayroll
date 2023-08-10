@@ -368,6 +368,10 @@ def generate_t4_pdf(employee_data, output_file):
         elements.append(PageBreak())
         pdf.build(elements)
     
+    # Create a folder for each day
+    if not os.path.exists(f"./slips/{time.strftime('%Y%m%d')}"):
+        os.makedirs(f"./slips/{time.strftime('%Y%m%d')}")
+
     for employee_id in employee_data:
         merger.append(fileobj=open(f"./slips/tmp/{employee_id}.pdf", 'rb'))
     merger.write(fileobj=open(output_file, 'wb'))
@@ -375,14 +379,9 @@ def generate_t4_pdf(employee_data, output_file):
     for employee_id in employee_data:
         os.remove(f"./slips/tmp/{employee_id}.pdf")
 
-    # Save slip to ./slips/{date}/{employee_id}-{employee_name}.pdf
-    # Create a folder for each day
-    if not os.path.exists(f"./slips/{time.strftime('%Y%m%d')}"):
-        os.makedirs(f"./slips/{time.strftime('%Y%m%d')}")
+
         
     # Build the PDF document
-    
-    os.remove("./barcodetmp.jpg")
 
 # Call generate_t4_pdf() function to generate T4 slip for each employees
 def generateT4s(fiscal_year, week_number):

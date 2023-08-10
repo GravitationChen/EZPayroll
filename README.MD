@@ -9,17 +9,17 @@ This is a payroll management application named EZ Payroll. It provides a solutio
 ## Features
 
 ### Security
-1. Implemented Redis database to store the 20 recently used TOTP codes to prevent replay attack
-2. Enforced 2FA for all management users (TOTP setup after registration) // TODO: Implement FIDO2/Webauthn to support hardware security key for better security
-3. Store hashed user password in database and verify hash value to authenticate (not plain text)
-4. TODO: Enforce HTTPS (Let's Encrypt Cert?)
-5. TODO: Use nginx to reverse proxy flask server
+1. Implemented Redis database to store the 20 recently used TOTP codes to prevent replay attack.
+2. Enforced 2FA for all management users (TOTP setup after registration) // TODO: Implement FIDO2/Webauthn to support hardware security key for better security.
+3. Store hashed user password in database and verify hash value to authenticate (not plain text).
+4. Save a second copy of the file uploaded and the database data before changes.
+5. Seession expires in 10 minutes after login.
 
 ### Productivity
 1. Importing and updating employee data from a CSV file from the user
 2. Exporting employee data into a CSV file
-3. Exporting payrolls into personal T4 slips by a template file (User comstomizable).
-4.  
+3. Exporting payrolls into personal payroll slips with PDF417 code as a convienience feature.
+4. Viewing all the payrolls directly in the last 120 days in the dash board directly.
 
 # Copyright Disclosure and License Detail
 ## EZ Payroll is under MIT-FPA License
