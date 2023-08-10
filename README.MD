@@ -18,9 +18,8 @@ This is a payroll management application named EZ Payroll. It provides a solutio
 
 ### Productivity
 1. Importing and updating employee data from a CSV file from the user
-2. Exporting employee data into a CSV file
-3. Exporting payrolls into personal payroll slips with PDF417 code as a convienience feature.
-4. Viewing all the payrolls directly in the last 120 days in the dash board directly.
+2. Exporting payrolls into personal payroll slips with PDF417 code as a convienience feature.
+3. Viewing all the payrolls directly in the last 120 days in the dash board directly.
 
 ## Get Started
 
