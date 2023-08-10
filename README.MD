@@ -2,6 +2,7 @@
 By Andy Boyu Chen
 
 ## Video Demo
+URL: https://youtu.be/oEgEdkJFs8U
 
 ## Description
 This is a payroll management application named EZ Payroll. It provides a solution to small businesses to fulfill their financial management need.
@@ -20,6 +21,38 @@ This is a payroll management application named EZ Payroll. It provides a solutio
 2. Exporting employee data into a CSV file
 3. Exporting payrolls into personal payroll slips with PDF417 code as a convienience feature.
 4. Viewing all the payrolls directly in the last 120 days in the dash board directly.
+
+## Get Started
+
+### Requirements
+
+```
+sudo apt install redis
+sudo apt install python-3.11.4
+sudo apt install sqlite3
+pip install -r modules.txt
+```
+
+### Run
+After change your working directory into .../EZ Payroll/app
+
+You can run:
+```
+flask run
+```
+
+The website will run by default at: ``localhost:5000``
+
+### Default Management Account
+```
+Username: test
+Password: 123456
+TOTP Key: 3LUX6RLFO2JLOIPP4K3TRAVFRBUEJUDX
+TOTP Algorithm: SHA 1
+Digits: 6
+Refresh Period: 30s
+```
+*Warning: If going to use in production, it is recommended to create new management account and remove the current one from the database before deploying.*
 
 # Copyright Disclosure and License Detail
 ## EZ Payroll is under MIT-FPA License

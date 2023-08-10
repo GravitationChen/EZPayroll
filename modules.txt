@@ -1,0 +1,10 @@
+Flask==2.3.2
+flask_sqlalchemy==3.0.5
+pdf417gen==0.7.1
+Pillow==10.0.0
+pyotp==2.9.0
+PyPDF4==1.27.0
+redis==4.6.0
+reportlab==4.0.4
+Werkzeug==2.3.6
+sqlite3
